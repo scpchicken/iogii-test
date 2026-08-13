@@ -15,7 +15,7 @@
 </option>
 <option value="onlineinterpreter.html?program=%7D%29%3A%3Br%28%7Dt%25.v%0A%23+more+verbosely%0A%23+countTo+succ+dup+mdup+repeat+pred+countTo+tail+mod+prod+filter&input=25&v=1.2.1">Primes
 </option>
-<option value="onlineinterpreter.html?program=m333%7D%3B*2*%29%2F2HH2*%2B%3E%27.Z*%0A%23+this+is+explained+at+https%3A%2F%2Fgolfscript.com%2Fiogii%2Fexamples.html%23pi&input=&v=1.2.1">Pi
+<option value="onlineinterpreter.html?program=m18%7D%3B*2*%29%2F2HH2*%2B%3E%27.Z*%0A%23+this+is+explained+at+https%3A%2F%2Fgolfscript.com%2Fiogii%2Fexamples.html%23pi&input=&v=1.2.1">Pi
 </option>
   </select>
 <br>
@@ -37,12 +37,10 @@ Output <label style="float: right;" title="(performs a `show` on all outputs)"><
 <textarea id="output" readonly cols="40" rows="12"></textarea><br>
 
 
-Expand Program<div id="expanded" style="
+Expanded Program<div id="expanded" style="
+  background-color: #171A22;
   font-family: monospace;
-  background-color: #1e1e1e;
   padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
   min-height: 100px;
   white-space: pre-wrap;
   word-break: break-all;
@@ -73,6 +71,10 @@ const timeoutValue = document.getElementById('timeoutValue');
 
 timeoutSlider.addEventListener('input', () => {
    timeoutValue.textContent = timeoutSlider.value;
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('prettyprintbox').checked = true;
 });
 
 function addInputBox() {
@@ -723,9 +725,9 @@ if !defined? mk_op
     end
     names = names.split
     NoCommaOverloads.concat names.filter{|name| name.size == 1} if names.any?{|name| name[/,\$/] }
-    OpsUsingZero << names[-1] if uses_zero
+    OpsUsingZero << names[1] ? names[1] : names[-1] if uses_zero
 
-    op = new_op(names[-1], type_sig, block: block, vectorize: vectorize, promote: promote, &impl)
+    op = new_op(names[1] ? names[1] : names[-1], type_sig, block: block, vectorize: vectorize, promote: promote, &impl)
 
     names.each{|name|
       if Ops[name]
@@ -739,6 +741,7 @@ if !defined? mk_op
       mod_op = op.dup
       mod_op.ways[0].mod = 1
       mod_op.name = op.name.sub(/^./, &:upcase)
+
 
       names.each{|name|
         if name =~ /^[a-z]/ && op.ways[0].arg_types.all?{|at| at != ACharSpec }
@@ -868,10 +871,10 @@ mk_op("T rangeTo", "x_1 -> [x]", "3T -> [0,1,2]"){|a| range(zero(0,at),a.value) 
 mk_op("u unsquare sqrt", "int_1 -> int", "9u -> 3"){|a| square_root(a.value) }
 mk_op("H powOf10", "int_1 -> int", "2H -> 100"){|a| pow(10.const, a) }
 mk_op("h powOf2", "int_0 -> int", "8h -> 256"){|a| pow(2.const, a) }
-mk_op("B \$, sortedSet", "[a]_0 -> [a]", "3,1,4,1 B -> [1,3,4]"){|a| to_lazy_list_rec(to_eager_list_rec(a).sort.uniq) }
+mk_op("B sortedSet \$,", "[a]_0 -> [a]", "3,1,4,1 B -> [1,3,4]"){|a| to_lazy_list_rec(to_eager_list_rec(a).sort.uniq) }
 # this overload also has doesn't allow coerce (handled specially in type infer)
-mk_op("| {, range", "x_0 x_0 -> [x]", "8 5 | -> [5,6,7]"){|a,b| range(b.value, a.value) }
-mk_op("V (, min", "a a_0 -> a", '4 5 V -> 4'){|a,b| spaceship(a,b) <= 0 ? a.value : b.value }
+mk_op("| range {,", "x_0 x_0 -> [x]", "8 5 | -> [5,6,7]"){|a,b| range(b.value, a.value) }
+mk_op("V min (,", "a a_0 -> a", '4 5 V -> 4'){|a,b| spaceship(a,b) <= 0 ? a.value : b.value }
 
 category("debugging ops")
 mk_op("nil", "[a]", 'nil -> []'){ [] }
@@ -1201,10 +1204,10 @@ def build_tree(tokens, registers, input_present, last_unmatched = nil, first_rig
       op = lookup_op(t.str)
       raise IogiiError.new "unknown op", t if !op
       args = op.parse_nargs.times.map{ pop[] }.reverse
-      if op.name == "dup"
+      if op.name.downcase == "dup"
         push[AST.new(t, args, :IdentityNode)]
         insert_duped[nodes.size-1,[0]]
-      elsif op.name == "peek"
+      elsif op.name.downcase == "peek"
         push[AST.new(t, args, :IdentityNode)]
         insert_duped[nodes.size-1,[0,1]]
       elsif op.name == "\$"
@@ -1221,13 +1224,13 @@ def build_tree(tokens, registers, input_present, last_unmatched = nil, first_rig
       elsif op.name == "implicit"
         push[AST.new(t, [], :ImplicitValue)]
       elsif op.block
-        if ['mdup', 'mpeek'].include?(op.name)
+        if ['mdup', 'mpeek'].include?(op.name.downcase)
           push[AST.new(t, args, :MDupOp)]
           lbs << nodes.size - 1
           blocks_can_close_now = false
         else
           n = AST.new(t, args, :LoopOp)
-          n.is_fold_op = ["foldr","foldr0"].include? op.name
+          n.is_fold_op = ["foldr","foldr0"].include? op.name.downcase
           push[n]
           loop_lbs << nodes.size - 1 if !t.matching_bracket
         end
@@ -1514,23 +1517,23 @@ def to_ir_h(ast_nodes, ast_ind, nodes, ast2ir, registers, input_op)
       block = ast_node.impl
       block_ret = ast_nodes[block].args[0]
 
-      if op.name == "mdup"
+      if op.name.downcase == "mdup"
         ast2ir[block] = AstInd.new block_ret
         ast2ir[ast_ind] = AstInd.new args[0]
-      elsif op.name == "mpeek"
+      elsif op.name.downcase == "mpeek"
         ast2ir[block] = AstInd.new block_ret
         ast2ir[ast_ind] = AstInd.new args[0]
-      elsif op.name == "iterate"
+      elsif op.name.downcase == "iterate"
         nodes << IR.new(Ops["cons"].dup_mod(mod), [block_ret, args[0]], token, true)
         ast2ir[block] = nodes.size - 1
         nodes << IR.new(Ops["superpad"].dup_mod(mod), [ir_ind(nodes.size-1)], token, true)
         ast2ir[ast_ind] = nodes.size - 1
-      elsif op.name == "iterate0"
+      elsif op.name.downcase == "expand"
         nodes << IR.new(Ops["consDefault"].dup_mod(mod), [block_ret], token, true)
         ast2ir[block] = AstInd.new block_ret
         nodes << IR.new(Ops["superpad"].dup_mod(mod), [ir_ind(nodes.size-1)], token, true)
         ast2ir[ast_ind] = nodes.size - 1
-      elsif op.name == "foldr"
+      elsif op.name.downcase == "foldr"
         nodes << IR.new(Ops["pad"].dup_mod(mod), [block_ret, args[0]], token, true)
         pad_ind = nodes.size - 1
         nodes << IR.new(Ops["superpad"].dup_mod(mod), [ir_ind(nodes.size-1)], token, true)
@@ -1539,7 +1542,7 @@ def to_ir_h(ast_nodes, ast_ind, nodes, ast2ir, registers, input_op)
         ast2ir[ast_ind] = nodes.size - 1
         nodes << IR.new(Ops["head"].dup_mod(mod), [ir_ind(pad_ind)], token, true)
         ast2ir[block] = nodes.size - 1
-      elsif op.name == "foldr0"
+      elsif op.name.downcase == "meld"
         nodes << IR.new(Ops["superpad"].dup_mod(mod), [block_ret], token, true)
         nodes << IR.new(Ops["padDefault"].dup_mod(mod), [ir_ind(nodes.size-1)], token, true)
         nodes << IR.new(Ops["tail"].dup_mod(mod), [ir_ind(nodes.size-1)], token, true)
@@ -2934,43 +2937,223 @@ def wrap_html(str, css_class)
   %(<span class="#{css_class}">#{escaped}</span>)
 end
 
-def expand_program(code)
-  tokens, _input_mode = lex(code)
+# Helper to pull and normalize DOM inputs identically to run_cb
+def fetch_ui_inputs(code)
+  return [] unless defined?(Document) && Document.respond_to?(:querySelectorAll)
+
+  web_inputs = Document.querySelectorAll("#inputsContainer textarea").to_a.map { |i| i['value'].to_s }
+  input_mode = (lex(code)[1] rescue :auto_parse_mode)
+
+  if web_inputs.size == 1 && input_mode != :auto_parse_mode
+    # raw mode with a single input: checked = simulated stdin (String), unchecked = arg array
+    stdin_checked = (Stdinbox[:checked].to_s == "true" rescue false)
+    stdin_checked ? web_inputs[0] : web_inputs
+  else
+    web_inputs == [""] ? "" : web_inputs
+  end
+end
+
+def format_string_literal(str)
+  str.gsub(/\\\\x[0-9a-fA-F]{2}|\\\\[n0"\\\\\\\\]|\\\\/) do |m|
+    m.length == 1 ? m * 2 : m.downcase
+  end
+end
+
+def highlight_data_token(data_str)
+  pattern = /"(?:[^"\\\\]|\\\\.)*(?:"|$)|'(?:\\\\x[0-9a-fA-F]{2}|\\\\[n0]|.)|\\d+~?|,+|[^\\s,\\d]+/
+
+  scanned_tokens = data_str.scan(pattern)
+
+  token_types = data_str.scan(pattern).map do |token_str|
+    if token_str.start_with?('"')
+      :str
+    elsif token_str.start_with?("'")
+      :char
+    elsif token_str.match?(/\\A\\d+~?\\z/)
+      :int
+    end
+  end.compact
+
+  # 2. String conversion occurs if any token is a string OR if types are mixed
+  convert_to_str = token_types.include?(:str) || token_types.uniq.size > 1
+
+  # 3. Format and highlight tokens
+  scanned_tokens.map do |token_str|
+    if token_str.start_with?('"')
+      full_str = token_str + (token_str.end_with?('"') ? "" : '"')
+      wrap_html(format_string_literal(full_str), "hl-string")
+    elsif token_str.start_with?("'")
+      if convert_to_str
+        # Convert char literal 'x -> string literal "x"
+        formatted_str = format_string_literal(%Q("#{token_str[1..-1]}"))
+        wrap_html(formatted_str, "hl-string")
+      else
+        wrap_html(token_str, "hl-char")
+      end
+    elsif token_str.match?(/\\A\\d+~?\\z/)
+      if convert_to_str
+        # Convert number 3 -> "3" (or negative 5~ -> "-5")
+        num_str = token_str.end_with?('~') ? "-#{token_str[0..-2]}" : token_str
+        wrap_html(%Q("#{num_str}"), "hl-string")
+      else
+        wrap_html(token_str, "hl-number")
+      end
+    elsif token_str.start_with?(",")
+      wrap_html(token_str, "hl-comma")
+    else
+      wrap_html(token_str, "hl-other")
+    end
+  end.join
+end
+
+def expand_program(code, inputs = nil)
+  tokens, input_mode = lex(code)
   return "" if tokens.empty?
-  registers = get_var_ids_set(tokens)
+
+  # 1. Fetch from DOM if inputs parameter isn't explicitly provided
+  raw_input = inputs.nil? ? fetch_ui_inputs(code) : inputs
+
+  # 2. Normalize raw_input into a flat array of non-empty input strings & track format
+  inputs_arr = case raw_input
+               when Array
+                 raw_input.map(&:to_s).reject(&:empty?)
+               when String
+                 raw_input.empty? ? [] : [raw_input]
+               else
+                 []
+               end
+
+  is_input_present = !inputs_arr.empty?
+  input_present = promise { is_input_present }
+
+  # 3. Dynamically determine input_op
+  input_op = promise do
+    if is_input_present
+      types_and_ranks = inputs_arr.map do |inp|
+        if input_mode == :raw_mode
+          [CharType, 1]
+        elsif input_mode == :raw_line_mode
+          [CharType, 2]
+        else # :auto_parse_mode
+          in_toks, _ = lex(inp)
+          if in_toks.empty?
+            [CharType, 1]
+          else
+            dtoks = tokenize_data(in_toks, {})
+            if dtoks.size == 1 && dtoks[0].type == :data
+              way = dtoks[0].data_impl.ways[0]
+              [way.ret_type, way.ret_rank]
+            else
+              [CharType, 1]
+            end
+          end
+        end
+      end
+
+      if types_and_ranks.size == 1 && raw_input.is_a?(String)
+        # Single stdin stream
+        t, r = types_and_ranks.first
+      elsif types_and_ranks.size == 1
+        # Single CLI argument
+        t, r = types_and_ranks.first
+      else
+        # Multiple inputs increase vector rank by 1
+        max_r = types_and_ranks.map { |_, r| r }.max
+        all_types = types_and_ranks.map { |t, _| t }.uniq
+        t = (all_types.size == 1 ? all_types.first : CharType)
+        r = max_r + 1
+      end
+
+      new_op("input", type_and_rank_to_str(t, r))
+    else
+      Ops["input"]
+    end
+  end
+
+  # 4. Resolve variables and split tokens
+  var_ids = get_var_ids_set(tokens)
+  tokens = split_ids(tokens, var_ids)
+  tokens = tokenize_data(tokens, var_ids)
+
+  # 5. Parse AST and transform to IR
+  nodes, main_inds, registers = parse_main(tokens, input_present)
+  ir, ir_inds = to_ir(nodes, registers, main_inds, input_op)
+
+  # 6. Type and rank resolution
+  types, nodes_ways = solve_types(ir)
+  _ranks, nodes_way = solve_ranks(ir, types, nodes_ways)
+
+  # 7. Map token object IDs to resolved way names
+  expanded_map = {}
+  ir.each_with_index do |node, i|
+    if node.token && nodes_way[i] && nodes_way[i].name != "data"
+      expanded_map[node.token.object_id] = nodes_way[i].name
+    end
+  end
+
+  # 8. Render highlighted code lines
   lines = []
   current_line = []
   current_line_no = tokens.first.line_no
 
   tokens.each do |t|
+    next if t.type.to_s.start_with?("Virtual")
+
     if t.line_no != current_line_no
       lines << current_line.join(" ")
+      (t.line_no - current_line_no - 1).times { lines << "" } if t.line_no > current_line_no + 1
       current_line = []
       current_line_no = t.line_no
     end
 
+    is_variable = if var_ids.respond_to?(:include?)
+      var_ids.include?(t.str)
+    elsif var_ids.respond_to?(:[])
+      var_ids[t.str]
+    else
+      false
+    end
+
     expanded_word = if t.str == "=" && t.sets_var
-      "set " + wrap_html("#{t.sets_var}", "hl-variable")
-    elsif registers[t.str]
+      wrap_html("set ", "hl-debug") + wrap_html("#{t.sets_var}", "hl-variable")
+    elsif "nil pad show type version del let set input".split.include?(t.str)
+      wrap_html(t.str, "hl-debug")
+    elsif is_variable
       wrap_html(t.str, "hl-variable")
-    elsif (op = lookup_op(t.str))
-      wrap_html(op.name, "hl-other")
+    # --- FIXED SECTION START ---
+    elsif (op_fix = lookup_op(t.str.delete(","))) || expanded_map[t.object_id]
+      commas = t.str.scan(/,+/).join
+      op_implicit = false
+      op_loop = false
+      op = expanded_map[t.object_id] || (op_fix ? op_fix.name : nil)
+
+      if op_fix
+        if t.str.delete(",") == "}"
+          op_implicit = true
+        elsif "iterate expand meld foldr".split.include?(op_fix.name.downcase)
+          op = op_fix.name
+          op_loop = true
+        elsif op && op_fix.name.downcase.delete(",") == op.downcase.delete(",")
+          op = op_fix.name
+        end
+      end
+      wrap_html(op + (op_implicit ? "SetImpl" : "") + (op == "chr" ? "" : commas), op_loop ? "hl-loop" : "hl-operator")
+    # --- FIXED SECTION END ---
     else
       case t.type
-      when :comment
-        wrap_html(t.str, "hl-comment")
-      when :id
-        wrap_html(t.str, "hl-variable")
-      when :str
-        wrap_html(t.str, "hl-string")
-      when :char
-        wrap_html(t.str, "hl-char")
-      when :int
-        wrap_html(t.str, "hl-number")
-      when :commas
-        wrap_html(t.str, "hl-comma")
+      when :comment then wrap_html(t.str, "hl-comment")
+      when :id      then wrap_html(t.str, "hl-variable")
+      when :str     then wrap_html(t.str, "hl-string")
+      when :char    then wrap_html(t.str, "hl-char")
+      when :int     then wrap_html(t.str, "hl-number")
+      when :commas  then wrap_html(t.str, "hl-comma")
+      when :data    then highlight_data_token(t.str)
       else
-        wrap_html(t.str, "hl-other")
+        if t.str.match(/(\>,*)/)
+          wrap_html(t.str, "hl-loop")
+        else
+          wrap_html(t.str, "hl-other")
+        end
       end
     end
 
