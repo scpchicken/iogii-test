@@ -1,0 +1,21 @@
+# Copied to ../site/.htaccess by generate_site.rb, so it lands in public_html/iogii
+# and applies to the version snapshot directories underneath it too.
+#
+# Without this the server sends no Cache-Control for .html/.js/.wasm and browsers
+# fall back to heuristic caching, which is how a half-downloaded d3.v7.min.js
+# stuck around in people's caches after a release and broke the online interpreter.
+
+<IfModule mod_headers.c>
+  # Pages are revalidated on every load (a 304 is cheap) so that a new release's
+  # asset urls are picked up right away rather than whenever a heuristic expires.
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+
+  # These are only ever linked with a ?v=<content hash> query string (see asset_url
+  # in generate_site.rb), so a given url's bytes never change and it can be cached
+  # forever. Anything added here must be linked through asset_url as well.
+  <FilesMatch "\.(js|wasm|css|svg)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>

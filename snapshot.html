@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>iogii Snapshot</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+
+  #snapshot-banner {
+    background: #222;
+    color: #fff;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #close-btn {
+    background: #ff4444;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+
+  #hide-btn {
+    background: grey;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+
+  iframe {
+    width: 100%;
+    height: calc(100vh - 50px);
+    border: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="snapshot-banner">
+  <div>
+    You are viewing a website snapshot (version <span id="version"></span>)
+  </div>
+  <div class="snapshot-actions">
+  <button id="hide-btn" onclick="hideBanner()">Hide Banner</button>
+  <button id="close-btn" onclick="closeSnapshot()">View Current</button>
+  </div>
+</div>
+
+<iframe id="snapshotFrame" src="/"></iframe>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const snapshot = params.get("v");
+const page = (params.get("page") || "") + "?" + `${params}`;
+document.getElementById("snapshotFrame").src = (snapshot || "") + "/" + page;
+document.getElementById("version").textContent = snapshot;
+
+function closeSnapshot() {
+   const iframe = document.getElementById('snapshotFrame');
+   const currentUrl = iframe.contentWindow.location.href.replace(snapshot + "/", "");
+   url = new URL(currentUrl);
+   url.searchParams.set("v","current");
+   url.searchParams.delete("page");
+   window.location.href = url;
+}
+function hideBanner() {
+  const iframe = document.getElementById("snapshotFrame");
+  window.location.href = iframe.contentWindow.location.href;
+}
+</script>
+
+</body>
+</html>
