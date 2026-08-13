@@ -134,3 +134,12 @@ textarea {
    resize: vertical;
    box-sizing: border-box;
 }
+
+.hl-comment    { color: #969bff; } /* Blue */
+.hl-string   { color: #2e7d32; } /* Dark Green */
+.hl-char     { color: #90ee90; } /* Light Green */
+.hl-comma    { color: #888888; } /* Grey */
+.hl-number   { color: #ff9800; } /* Orange */
+.hl-variable { color: #ff007f; } /* Bright Pink */
+.hl-gt       { color: #4fc3f7; } /* Light Blue */
+.hl-other    { color: #d3d3d3; } /* Light Grey */

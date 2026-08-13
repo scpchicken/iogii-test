@@ -33,8 +33,22 @@ Input <label id="stdinlabel" style="display: none;" title="With raw mode and a s
 </label>
 <br>
 
-Output <label style="float: right;" title="(performs a `show` on all outputs)"><input type="checkbox" id="prettyprintbox"></input>pretty print</label><br>
+Output <label style="float: right;" title="(performs a `show` on all outputs)"><input type="checkbox" id="prettyprintbox" checked autocomplete="off"></input>pretty print</label><br>
 <textarea id="output" readonly cols="40" rows="12"></textarea><br>
+
+
+Expand Program<div id="expanded" style="
+  font-family: monospace;
+  background-color: #1e1e1e;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-height: 100px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-y: auto;
+"></div><br>
+
 Parse (<a href="https://github.com/magjac/d3-graphviz">d3 graphviz</a>) <button onclick="legendary()">Legend</button>
 
 <div id="ast_graph"></div><br>
@@ -238,6 +252,7 @@ async function load_ruby_iogii_and_run() {
 
   run_ruby_iogii();
 }
+
 
 async function run_ruby_iogii() {
   const { vm } = await DefaultRubyVM(module, {
@@ -723,6 +738,7 @@ if !defined? mk_op
     if op.ways[0].can_mod? && op.ways[0].vectorize
       mod_op = op.dup
       mod_op.ways[0].mod = 1
+      mod_op.name = op.name.sub(/^./, &:upcase)
 
       names.each{|name|
         if name =~ /^[a-z]/ && op.ways[0].arg_types.all?{|at| at != ACharSpec }
@@ -2894,6 +2910,77 @@ def render_graphviz(graph, component)
   JS.eval('d3.select("#' + component + '").graphviz({useWorker: false}).zoom(false).renderDot('+graph.inspect+');')
 end
 
+def wrap_html(str, css_class)
+  return "" if str.nil? || str.empty?
+
+  escaped = str.gsub("&", "&amp;")
+               .gsub("<", "&lt;")
+               .gsub(">", "&gt;")
+               .gsub('"', "&quot;")
+               .gsub("'", "&#039;")
+
+  %(<span class="#{css_class}">#{escaped}</span>)
+end
+
+def wrap_html(str, css_class)
+  return "" if str.nil? || str.empty?
+
+  escaped = str.gsub("&", "&amp;")
+               .gsub("<", "&lt;")
+               .gsub(">", "&gt;")
+               .gsub('"', "&quot;")
+               .gsub("'", "&#039;")
+
+  %(<span class="#{css_class}">#{escaped}</span>)
+end
+
+def expand_program(code)
+  tokens, _input_mode = lex(code)
+  return "" if tokens.empty?
+  registers = get_var_ids_set(tokens)
+  lines = []
+  current_line = []
+  current_line_no = tokens.first.line_no
+
+  tokens.each do |t|
+    if t.line_no != current_line_no
+      lines << current_line.join(" ")
+      current_line = []
+      current_line_no = t.line_no
+    end
+
+    expanded_word = if t.str == "=" && t.sets_var
+      "set " + wrap_html("#{t.sets_var}", "hl-variable")
+    elsif registers[t.str]
+      wrap_html(t.str, "hl-variable")
+    elsif (op = lookup_op(t.str))
+      wrap_html(op.name, "hl-other")
+    else
+      case t.type
+      when :comment
+        wrap_html(t.str, "hl-comment")
+      when :id
+        wrap_html(t.str, "hl-variable")
+      when :str
+        wrap_html(t.str, "hl-string")
+      when :char
+        wrap_html(t.str, "hl-char")
+      when :int
+        wrap_html(t.str, "hl-number")
+      when :commas
+        wrap_html(t.str, "hl-comma")
+      else
+        wrap_html(t.str, "hl-other")
+      end
+    end
+
+    current_line << expanded_word
+  end
+
+  lines << current_line.join(" ") unless current_line.empty?
+  lines.join("\n")
+end
+
 def run_cb
   set_status("running")
   \$ruby_output = ""
@@ -2949,6 +3036,14 @@ end
 
 run_cb
 `);
+
+// Example JS binding call when running the program:
+const programCode = document.getElementById('program').value;
+const expandedTextarea = document.getElementById('expanded');
+
+// Evaluate inside ruby VM:
+const expandedCode = vm.eval(`expand_program(${JSON.stringify(programCode)})`);
+expandedTextarea.innerHTML = expandedCode.toString();
 }
 
 window.addEventListener("unhandledrejection", (event) => {
