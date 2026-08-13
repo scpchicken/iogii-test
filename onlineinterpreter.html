@@ -27,7 +27,10 @@ Input <label id="stdinlabel" style="display: none;" title="With raw mode and a s
 
 
 <button type="button" id="runbutton">Run! (ctrl - ⏎)</button> <button type="button" id="ismbutton" title="Just generate the engine code (ism) for this program + input. Op format: name, arg inds, vec level, result type)">View .ism</button> <span id="status">loading ruby.wasm</span> <button style="float: right;"  id="sharebutton">Share</button>
-
+<label id="timeoutLabel" style="margin-left: 10px;" title="Set maximum execution time">
+  Timeout: <span id="timeoutValue">2</span>s
+  <input type="range" id="timeoutSlider" min="2" max="60" value="2" step="1">
+</label>
 <br>
 
 Output <label style="float: right;" title="(performs a `show` on all outputs)"><input type="checkbox" id="prettyprintbox"></input>pretty print</label><br>
@@ -50,6 +53,13 @@ if (urlParams.get("program") && version != "1.2.1" && version != "current") {
 const container = document.getElementById('inputsContainer');
 const addButton = document.getElementById('addButton');
 const status = document.getElementById('status');
+
+const timeoutSlider = document.getElementById('timeoutSlider');
+const timeoutValue = document.getElementById('timeoutValue');
+
+timeoutSlider.addEventListener('input', () => {
+   timeoutValue.textContent = timeoutSlider.value;
+});
 
 function addInputBox() {
    const row = document.createElement('div');
@@ -232,10 +242,14 @@ async function load_ruby_iogii_and_run() {
 async function run_ruby_iogii() {
   const { vm } = await DefaultRubyVM(module, {
     env: {
-      RUBY_FIBER_VM_STACK_SIZE: "8388608",
-      RUBY_THREAD_VM_STACK_SIZE: "8388608"
+      RUBY_FIBER_VM_STACK_SIZE: "67108864",
+      RUBY_THREAD_VM_STACK_SIZE: "67108864"
     }
   });
+
+  const currentTimeout = document.getElementById('timeoutSlider').value;
+
+  // Set the global variable in Ruby before running user code
 
   await vm.evalAsync(`#!/usr/bin/env ruby
 # Copyright (c) 2024-2026 Darren Smith. All rights reserved.
@@ -251,6 +265,8 @@ async function run_ruby_iogii() {
 # THIS SOFTWARE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 # MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+$timeout_limit = ${currentTimeout}; $start_time = Time.now;
 
 # lex.rb #######################################################################
 class Token < Struct.new(
@@ -2831,9 +2847,12 @@ require "js"
 class Promise
   alias orig_value value
   def value
-    if Time.now - \$start_time > 2.0 # todo, do this from JS?
+    max_timeout = $timeout_limit || 2.0
+
+    if Time.now - $start_time > max_timeout
       raise IogiiError.new("timeout")
     end
+
     orig_value
   end
 end
